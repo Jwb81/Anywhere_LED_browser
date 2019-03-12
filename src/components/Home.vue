@@ -108,6 +108,7 @@ export default {
       mainServerUrl: '',
       socket: null,
       socketConnected: false,
+      storedIps: [],
       lights: [],
       scenes: [],
       groups: [],
@@ -143,7 +144,7 @@ export default {
   },
 
   mounted() {
-    
+    this.storedIps = localStorage.getItem('Anywhere_LED_Ips');
   },
 
   methods: {
@@ -155,7 +156,6 @@ export default {
         this.scenes = scenes;
         this.switchesToggledOn = lights.filter(l => l.active).map(l => l.id);
         this.connectedLights = lights.filter(l => l.connected).map(l => l.id);
-        console.log(`connected: ${this.connectedLights}`);
       })
 
       // set a light button that could have been changed by another user
@@ -178,12 +178,10 @@ export default {
       this.socketConnected = true;
 
       this.socket.on('disconnect', () => this.socketConnected = false);
-
     },
 
-    createSocket: function() {
+    createSocket: async function() {
       this.socket = io(`http://${this.mainServerUrl}`);
-      this.socket.on('disconnect', () => console.log('failed'));
       this.setupSocket();
     },
     
@@ -218,6 +216,16 @@ export default {
     handleSceneClick: function(id) {
       this.socket.emit('run-scene', { id });
     },
+
+    addIpToCookies: function(obj) {
+      this.storedIps = this.storedIps.concat(obj);
+      localStorage.setItem('Anywhere_LED_Ips', JSON.stringify(this.storedIps));
+    },
+
+    removeIpFromCookies: function(obj) {
+      this.storedIps = this.storedIps.filter(i => i.name !== obj.name);
+      localStorage.setItem('Anywhere_LED_Ips', JSON.stringify(this.storedIps));
+    }
 
   }
 };
