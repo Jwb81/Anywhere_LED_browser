@@ -182,7 +182,7 @@ export default {
     },
 
     createSocket: function() {
-      this.socket = io(this.mainServerUrl);
+      this.socket = io(`http://${this.mainServerUrl}`);
       this.socket.on('disconnect', () => console.log('failed'));
       this.setupSocket();
     },
