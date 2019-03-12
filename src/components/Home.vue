@@ -1,5 +1,13 @@
 <template>
   <div class="wrapper">
+    <div class="socket-connection" v-if='!socketConnected'>
+      <h3>Enter a server IP to connect to</h3>
+      <input class='socket-connection-input' v-model='mainServerUrl' />
+      <button class='socket-connection-submit' @click='createSocket'>Connect</button>
+    </div>
+
+    <div v-if='socketConnected'>
+    <h3 style='margin-bottom: 40px;'>Connected to {{ mainServerUrl }}</h3>
     <h1>Switches</h1>
     <v-container>
       <v-layout row wrap justify-center>
@@ -77,6 +85,7 @@
         />
       </v-layout>
     </v-container>
+    </div>
   </div>
 </template>
 
@@ -94,9 +103,11 @@ export default {
     Scene
   },
   data() {
-    const mainServerUrl = `192.168.1.119:3000`
+    // const mainServerUrl = `192.168.1.119:3000`
     return {
-      socket: io(mainServerUrl),
+      mainServerUrl: '',
+      socket: null,
+      socketConnected: false,
       lights: [],
       scenes: [],
       groups: [],
@@ -132,36 +143,50 @@ export default {
   },
 
   mounted() {
-    // re-instantiate the lights and scenes
-    this.socket.on('browser-reset', data => {
-    console.log(data)
-      const { lights, scenes } = data;
-      this.lights = lights;
-      this.scenes = scenes;
-      this.switchesToggledOn = lights.filter(l => l.active).map(l => l.id);
-      this.connectedLights = lights.filter(l => l.connected).map(l => l.id);
-      console.log(`connected: ${this.connectedLights}`);
-    })
-
-    // set a light button that could have been changed by another user
-    this.socket.on('update-light', data => {
-      const { id, active } = data;
-      const found = this.switchesToggledOn.find(val => val === id);
-      if (found && !active) {
-        this.switchesToggledOn = this.switchesToggledOn.filter(val => val !== id);
-      } else if (!found && active) {
-        this.switchesToggledOn = this.switchesToggledOn.concat(id);
-      }
-      // const found = this.selectedLights.find(val => val === id);
-      // if (found && !active) {
-      //   this.selectedLights = this.selectedLights.filter(val => val !== id);
-      // } else if (!found && active) {
-      //   this.selectedLights = this.selectedLights.concat(id);
-      // }
-    })
+    
   },
 
   methods: {
+    setupSocket: function() {
+      // re-instantiate the lights and scenes
+      this.socket.on('browser-reset', data => {
+        const { lights, scenes } = data;
+        this.lights = lights;
+        this.scenes = scenes;
+        this.switchesToggledOn = lights.filter(l => l.active).map(l => l.id);
+        this.connectedLights = lights.filter(l => l.connected).map(l => l.id);
+        console.log(`connected: ${this.connectedLights}`);
+      })
+
+      // set a light button that could have been changed by another user
+      this.socket.on('update-light', data => {
+        const { id, active } = data;
+        const found = this.switchesToggledOn.find(val => val === id);
+        if (found && !active) {
+          this.switchesToggledOn = this.switchesToggledOn.filter(val => val !== id);
+        } else if (!found && active) {
+          this.switchesToggledOn = this.switchesToggledOn.concat(id);
+        }
+        // const found = this.selectedLights.find(val => val === id);
+        // if (found && !active) {
+        //   this.selectedLights = this.selectedLights.filter(val => val !== id);
+        // } else if (!found && active) {
+        //   this.selectedLights = this.selectedLights.concat(id);
+        // }
+      })
+
+      this.socketConnected = true;
+
+      this.socket.on('disconnect', () => this.socketConnected = false);
+
+    },
+
+    createSocket: function() {
+      this.socket = io(this.mainServerUrl);
+      this.socket.on('disconnect', () => console.log('failed'));
+      this.setupSocket();
+    },
+    
     runLights: function() {
       this.socket.emit('update-lights', {
         lights: this.selectedLights,
@@ -172,8 +197,6 @@ export default {
         }
       })
     },
-
-
 
     // EVENT HANDLERS
     handleLightSwitchClick: function(id) {
@@ -234,43 +257,58 @@ export default {
 }
 
 .slider {
-    -webkit-appearance: none;
-    width: 100%;
-    height: 20px;
-    border-radius: 5px;
-    background: #d3d3d3;
-    outline: none;
-    opacity: 0.7;
-    -webkit-transition: .2s;
-    transition: opacity .2s;
-    margin: 15px 0;
-  }
+  -webkit-appearance: none;
+  width: 100%;
+  height: 20px;
+  border-radius: 5px;
+  background: #d3d3d3;
+  outline: none;
+  opacity: 0.7;
+  -webkit-transition: .2s;
+  transition: opacity .2s;
+  margin: 15px 0;
+}
   
-  .slider:hover {opacity: 1;}
-  
-  .slider::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 35px;
-    height: 35px;
-    border-radius: 50%;
-    cursor: pointer;
-  }
+.slider:hover {opacity: 1;}
 
-  .slider::-moz-range-thumb {
-    width: 35px;
-    height: 35px;
-    border-radius: 50%;
-    background: #4CAF50;
-    cursor: pointer;
-  }
-  #redSlider::-webkit-slider-thumb {background: red;}
-  #redSlider::-moz-range-thumb {background: red;}
-  #greenSlider::-webkit-slider-thumb {background: green;}
-  #greenSlider::-moz-range-thumb {background: green;}
-  #blueSlider::-webkit-slider-thumb {background: blue;}
-  #blueSlider::-moz-range-thumb {background: blue;}
-  #brightnessSlider::-webkit-slider-thumb {background: rgb(255, 255, 108);}
-  #brightnessSlider::-moz-range-thumb {background: rgb(255, 255, 108);}
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 35px;
+  height: 35px;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.slider::-moz-range-thumb {
+  width: 35px;
+  height: 35px;
+  border-radius: 50%;
+  background: #4CAF50;
+  cursor: pointer;
+}
+#redSlider::-webkit-slider-thumb {background: red;}
+#redSlider::-moz-range-thumb {background: red;}
+#greenSlider::-webkit-slider-thumb {background: green;}
+#greenSlider::-moz-range-thumb {background: green;}
+#blueSlider::-webkit-slider-thumb {background: blue;}
+#blueSlider::-moz-range-thumb {background: blue;}
+#brightnessSlider::-webkit-slider-thumb {background: rgb(255, 255, 108);}
+#brightnessSlider::-moz-range-thumb {background: rgb(255, 255, 108);}
+
+.socket-connection-input {
+  background-color: #ddd;
+  color: black;
+  padding: 5px;
+  border-radius: 5px;
+  margin-right: 20px;
+  margin-top: 10px;
+}
+
+.socket-connection-submit {
+  background-color: rgba(100,250,100,0.5);
+  padding: 5px;
+  border-radius: 5px;
+}
 
 </style>
